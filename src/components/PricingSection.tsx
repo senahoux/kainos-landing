@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, ArrowRight, Star, Loader2 } from 'lucide-react';
 
 const PRICE_ID_MONTHLY = import.meta.env.VITE_STRIPE_PRICE_ID_MONTHLY || 'price_1T2D5qLwWwkAxMb7IoiQquPB';
@@ -38,6 +38,26 @@ async function startCheckout(priceId: string, setLoading: (v: string | null) => 
 
 const PricingSection: React.FC = () => {
     const [loading, setLoading] = useState<string | null>(null);
+
+    useEffect(() => {
+        const el = document.getElementById('pricing');
+        if (!el || typeof window === 'undefined') return;
+        let fired = false;
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting && !fired) {
+                    fired = true;
+                    if (typeof (window as any).fbq === 'function') {
+                        (window as any).fbq('trackCustom', 'ViewPlans');
+                    }
+                    observer.disconnect();
+                }
+            },
+            { threshold: 0.5 }
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
 
     return (
         <section id="pricing" className="bg-black py-24 px-6 relative">
