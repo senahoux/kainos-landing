@@ -37,6 +37,22 @@ function getRawBody(req) {
     });
 }
 
+// ─── Safe date converter ──────────────────────────────────────────────────────
+// Accepts unix seconds (number), ISO string, or null/undefined.
+// Always returns ISO string or null — never throws.
+function toIso(value) {
+    if (value == null) return null;
+    try {
+        // Unix seconds (Stripe always sends this as a number)
+        if (typeof value === "number") return new Date(value * 1000).toISOString();
+        // Already a string — validate it
+        const d = new Date(value);
+        return isNaN(d.getTime()) ? null : d.toISOString();
+    } catch {
+        return null;
+    }
+}
+
 // ─── User-ID resolver ─────────────────────────────────────────────────────────
 /**
  * Returns { userId, source } where source is one of:
@@ -113,19 +129,19 @@ async function upsertSubscription(userId, fields) {
         ...fields,
     };
 
-    console.log(`[webhook] upserting subscription for user_id: ${userId} | status: ${fields.status} | sub: ${fields.stripe_subscription_id}`);
+    console.log(`[webhook] upserting subscription | user_id: ${userId} | status: ${fields.status} | sub: ${fields.stripe_subscription_id}`);
 
     const { error } = await supabase
         .from("subscriptions")
         .upsert(payload, { onConflict: "user_id" });
 
     if (error) {
-        console.error(`[webhook] subscriptions upsert failed for user_id ${userId}:`, error.message);
-        return false;
+        console.error(`[webhook] subscriptions upsert FAILED | user_id: ${userId} | code: ${error.code} | detail: ${error.details} | msg: ${error.message}`);
+        return { ok: false, detail: `${error.message} (${error.code})` };
     }
 
-    console.log(`[webhook] subscriptions upsert OK for user_id: ${userId}`);
-    return true;
+    console.log(`[webhook] subscriptions upsert OK | user_id: ${userId}`);
+    return { ok: true };
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
@@ -205,13 +221,13 @@ async function handleCheckoutCompleted(session, res) {
         try {
             const sub = await stripe.subscriptions.retrieve(session.subscription);
             priceId = sub.items.data[0]?.price?.id || null;
-            currentPeriodEnd = new Date(sub.current_period_end * 1000).toISOString();
+            currentPeriodEnd = toIso(sub.current_period_end);
         } catch (err) {
             console.error("[webhook] failed to retrieve subscription:", err.message);
         }
     }
 
-    const ok = await upsertSubscription(userId, {
+    const result = await upsertSubscription(userId, {
         stripe_customer_id: session.customer,
         stripe_subscription_id: session.subscription,
         status: "active",
@@ -220,12 +236,12 @@ async function handleCheckoutCompleted(session, res) {
         customer_email: email,
     });
 
-    if (!ok) {
-        return res.status(500).json({ ok: false, reason: "supabase_upsert_failed" });
+    if (!result.ok) {
+        return res.status(500).json({ received: true, ok: false, reason: "supabase_upsert_failed", details: result.detail });
     }
 
     await setProfilePremium(userId, true);
-    return res.status(200).json({ ok: true, user_id: userId, source });
+    return res.status(200).json({ received: true, ok: true, user_id: userId, source });
 }
 
 async function handleInvoicePaid(invoice, res) {
@@ -253,13 +269,13 @@ async function handleInvoicePaid(invoice, res) {
     if (invoice.subscription) {
         try {
             const sub = await stripe.subscriptions.retrieve(invoice.subscription);
-            currentPeriodEnd = new Date(sub.current_period_end * 1000).toISOString();
+            currentPeriodEnd = toIso(sub.current_period_end);
         } catch (err) {
             console.error("[webhook] invoice.paid: failed to retrieve subscription:", err.message);
         }
     }
 
-    const ok = await upsertSubscription(userId, {
+    const result = await upsertSubscription(userId, {
         stripe_customer_id: invoice.customer,
         stripe_subscription_id: invoice.subscription,
         status: "active",
@@ -267,8 +283,8 @@ async function handleInvoicePaid(invoice, res) {
         customer_email: email,
     });
 
-    if (!ok) {
-        return res.status(500).json({ ok: false, reason: "supabase_upsert_failed" });
+    if (!result.ok) {
+        return res.status(500).json({ received: true, ok: false, reason: "supabase_upsert_failed", details: result.detail });
     }
 
     await setProfilePremium(userId, true);
@@ -295,15 +311,15 @@ async function handleInvoicePaymentFailed(invoice, res) {
         return res.status(500).json({ ok: false, reason: error, ...extra });
     }
 
-    const ok = await upsertSubscription(userId, {
+    const result = await upsertSubscription(userId, {
         stripe_customer_id: invoice.customer,
         stripe_subscription_id: invoice.subscription,
         status: "past_due",
         customer_email: email,
     });
 
-    if (!ok) {
-        return res.status(500).json({ ok: false, reason: "supabase_upsert_failed" });
+    if (!result.ok) {
+        return res.status(500).json({ received: true, ok: false, reason: "supabase_upsert_failed", details: result.detail });
     }
 
     await setProfilePremium(userId, false);
