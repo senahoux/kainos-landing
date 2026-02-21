@@ -24,6 +24,25 @@ const supabase = createClient(
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
+// ─── Profile helper ───────────────────────────────────────────────────────────
+/**
+ * Sync profiles.is_premium based on subscription status.
+ * Only runs when userId is known — email-only (landing) flow skips this
+ * because there is no auth.users row yet (link happens on first Google login).
+ */
+async function setProfilePremium(userId, isPremium) {
+    if (!userId) return;
+    const { error } = await supabase
+        .from("profiles")
+        .update({ is_premium: isPremium })
+        .eq("id", userId);
+    if (error) {
+        console.error(`[webhook] profiles.is_premium=${isPremium} update failed for ${userId}:`, error.message);
+    } else {
+        console.log(`[webhook] profiles.is_premium=${isPremium} for user_id: ${userId}`);
+    }
+}
+
 // ─── Raw body collector ────────────────────────────────────────────────────────
 // Vercel gives us a Node.js IncomingMessage (readable stream).
 // We must collect the bytes ourselves — do NOT call res.json() or body-parsers
@@ -155,6 +174,7 @@ async function handleCheckoutCompleted(session) {
             console.error("[webhook] DB upsert by user_id failed:", error.message);
         } else {
             console.log(`[webhook] Subscription linked to user_id: ${userId}`);
+            await setProfilePremium(userId, true);
         }
     } else if (customerEmail) {
         // Flow 2: Landing page flow — user pays before creating account.
@@ -170,6 +190,7 @@ async function handleCheckoutCompleted(session) {
             console.error("[webhook] DB upsert by email failed:", error.message);
         } else {
             console.log(`[webhook] Subscription saved by email (pending link): ${customerEmail}`);
+            // profiles.is_premium will be set by the DB trigger when user logs in with Google
         }
     } else {
         console.error("[webhook] checkout.session.completed: no user_id or email — cannot save subscription");
@@ -192,19 +213,22 @@ async function handleInvoicePaid(invoice) {
         console.error("[webhook] invoice.paid: failed to retrieve subscription:", err.message);
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from("subscriptions")
         .update({
             status: "active",
             current_period_end: currentPeriodEnd,
             updated_at: new Date().toISOString(),
         })
-        .eq("stripe_subscription_id", stripeSubscriptionId);
+        .eq("stripe_subscription_id", stripeSubscriptionId)
+        .select("user_id")
+        .single();
 
     if (error) {
         console.error("[webhook] invoice.paid DB update failed:", error.message);
     } else {
         console.log(`[webhook] invoice.paid → status=active for sub: ${stripeSubscriptionId}`);
+        await setProfilePremium(data?.user_id, true);
     }
 }
 
@@ -217,18 +241,21 @@ async function handleInvoicePaymentFailed(invoice) {
     const stripeSubscriptionId = invoice.subscription;
     if (!stripeSubscriptionId) return;
 
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from("subscriptions")
         .update({
             status: "past_due",
             updated_at: new Date().toISOString(),
         })
-        .eq("stripe_subscription_id", stripeSubscriptionId);
+        .eq("stripe_subscription_id", stripeSubscriptionId)
+        .select("user_id")
+        .single();
 
     if (error) {
         console.error("[webhook] invoice.payment_failed DB update failed:", error.message);
     } else {
         console.log(`[webhook] invoice.payment_failed → status=past_due for sub: ${stripeSubscriptionId}`);
+        await setProfilePremium(data?.user_id, false);
     }
 }
 
@@ -240,17 +267,20 @@ async function handleInvoicePaymentFailed(invoice) {
 async function handleSubscriptionDeleted(subscription) {
     const stripeSubscriptionId = subscription.id;
 
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from("subscriptions")
         .update({
             status: "canceled",
             updated_at: new Date().toISOString(),
         })
-        .eq("stripe_subscription_id", stripeSubscriptionId);
+        .eq("stripe_subscription_id", stripeSubscriptionId)
+        .select("user_id")
+        .single();
 
     if (error) {
         console.error("[webhook] subscription.deleted DB update failed:", error.message);
     } else {
         console.log(`[webhook] subscription.deleted → status=canceled for sub: ${stripeSubscriptionId}`);
+        await setProfilePremium(data?.user_id, false);
     }
 }
