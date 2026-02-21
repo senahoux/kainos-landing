@@ -46,8 +46,7 @@ export default async function handler(req, res) {
             line_items: [{ price: priceId, quantity: 1 }],
             success_url: `${landingBase}/success?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${landingBase}/cancel`,
-            // Collect email so the webhook can link by email when userId is absent
-            customer_creation: "always",
+
         };
 
         // If the frontend supplied a logged-in user ID, attach it in two ways:
