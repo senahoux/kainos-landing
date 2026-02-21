@@ -276,8 +276,8 @@ async function handleInvoicePaid(invoice, res) {
     }
 
     const result = await upsertSubscription(userId, {
-        stripe_customer_id: invoice.customer,
-        stripe_subscription_id: invoice.subscription,
+        stripe_customer_id: invoice.customer || null,
+        stripe_subscription_id: invoice.subscription || null,  // may be undefined if not a subscription invoice
         status: "active",
         current_period_end: currentPeriodEnd,
         customer_email: email,
@@ -288,7 +288,7 @@ async function handleInvoicePaid(invoice, res) {
     }
 
     await setProfilePremium(userId, true);
-    return res.status(200).json({ ok: true, user_id: userId, source });
+    return res.status(200).json({ received: true, ok: true, user_id: userId, source });
 }
 
 async function handleInvoicePaymentFailed(invoice, res) {
