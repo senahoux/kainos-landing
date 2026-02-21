@@ -116,31 +116,63 @@ async function setProfilePremium(userId, isPremium) {
     }
 }
 
-// ─── Subscription upsert ──────────────────────────────────────────────────────
-/**
- * Upsert into public.subscriptions.
- * Always conflicts on user_id (only one active subscription per user).
- * Returns true on success, false on error.
- */
+// ─── Subscription ID extractor ───────────────────────────────────────────────
+// Stripe's schema changed: in invoice.paid the subscription lives under
+// invoice.parent.subscription_details.subscription (not invoice.subscription).
+// This helper tries all known paths and returns the string sub_… id or null.
+function getSubscriptionId(obj) {
+    const candidates = [
+        // checkout.session.completed
+        obj?.subscription,
+        // invoice.paid (new Stripe schema, 2025+)
+        obj?.parent?.subscription_details?.subscription,
+        // invoice.paid (fallback: line items)
+        obj?.lines?.data?.[0]?.parent?.subscription_item_details?.subscription,
+    ];
+    for (const c of candidates) {
+        if (!c) continue;
+        if (typeof c === "string" && c.startsWith("sub_")) return c;
+        if (typeof c === "object" && c.id) return c.id;
+    }
+    return null;
+}
+
+// ─── Subscription upsert (merge-safe) ────────────────────────────────────────
+// Fetches existing row for user_id first, then merges — only overwrites
+// a column if the new value is truthy. This prevents a webhook event
+// that lacks subscriptionId from nulling out a previously written sub ID.
 async function upsertSubscription(userId, fields) {
-    const payload = {
+    // 1. Fetch existing row so we can merge
+    const { data: existing } = await supabase
+        .from("subscriptions")
+        .select("stripe_subscription_id, current_period_end, stripe_customer_id, price_id, customer_email")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+    // 2. Merge: only overwrite if new value is truthy
+    const merged = {
         user_id: userId,
         updated_at: new Date().toISOString(),
-        ...fields,
+        status: fields.status,  // always update status
+        stripe_customer_id: fields.stripe_customer_id || existing?.stripe_customer_id || null,
+        stripe_subscription_id: fields.stripe_subscription_id || existing?.stripe_subscription_id || null,
+        current_period_end: fields.current_period_end || existing?.current_period_end || null,
+        price_id: fields.price_id || existing?.price_id || null,
+        customer_email: fields.customer_email || existing?.customer_email || null,
     };
 
-    console.log(`[webhook] upserting subscription | user_id: ${userId} | status: ${fields.status} | sub: ${fields.stripe_subscription_id}`);
+    console.log(`[webhook] upsert | user_id: ${userId} | status: ${merged.status} | sub: ${merged.stripe_subscription_id} | period_end: ${merged.current_period_end}`);
 
     const { error } = await supabase
         .from("subscriptions")
-        .upsert(payload, { onConflict: "user_id" });
+        .upsert(merged, { onConflict: "user_id" });
 
     if (error) {
-        console.error(`[webhook] subscriptions upsert FAILED | user_id: ${userId} | code: ${error.code} | detail: ${error.details} | msg: ${error.message}`);
+        console.error(`[webhook] upsert FAILED | user_id: ${userId} | code: ${error.code} | detail: ${error.details} | msg: ${error.message}`);
         return { ok: false, detail: `${error.message} (${error.code})` };
     }
 
-    console.log(`[webhook] subscriptions upsert OK | user_id: ${userId}`);
+    console.log(`[webhook] upsert OK | user_id: ${userId}`);
     return { ok: true };
 }
 
@@ -202,11 +234,8 @@ async function handleCheckoutCompleted(session, res) {
         session.customer_email ||
         null;
 
-    // subscription can be a string ID or an expanded object
-    const subscriptionId =
-        (session.subscription && typeof session.subscription === "object"
-            ? session.subscription.id
-            : session.subscription) || null;
+    // Use helper to handle string, expanded object, or new Stripe schema paths
+    const subscriptionId = getSubscriptionId(session);
 
     console.log(`[webhook] checkout.session.completed | customer: ${session.customer} | sub: ${subscriptionId} | email: ${email}`);
 
@@ -257,11 +286,8 @@ async function handleCheckoutCompleted(session, res) {
 async function handleInvoicePaid(invoice, res) {
     let email = invoice.customer_email || null;
 
-    // subscription can be a string ID or an expanded object
-    const subscriptionId =
-        (invoice.subscription && typeof invoice.subscription === "object"
-            ? invoice.subscription.id
-            : invoice.subscription) || null;
+    // Use helper: tries invoice.parent.subscription_details.subscription first (new Stripe schema)
+    const subscriptionId = getSubscriptionId(invoice);
 
     // If email missing on invoice, fetch from Stripe customer
     if (!email && invoice.customer) {
