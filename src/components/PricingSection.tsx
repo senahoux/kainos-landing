@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check, ArrowRight, Star, Loader2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const PRICE_ID_MONTHLY = import.meta.env.VITE_STRIPE_PRICE_ID_MONTHLY || 'price_1T31owLdVnAwm3JUlovYdaik';
 const PRICE_ID_YEARLY = import.meta.env.VITE_STRIPE_PRICE_ID_YEARLY || 'price_1T31pcLdVnAwm3JUOBahIxyv';
@@ -22,10 +23,17 @@ const annualFeatures = [
 async function startCheckout(priceId: string, setLoading: (v: string | null) => void) {
     setLoading(priceId);
     try {
+        // Get the current logged-in user if any (optional — landing users may not be logged in yet)
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user?.id ?? null;
+
+        const body: Record<string, string> = { priceId };
+        if (userId) body.userId = userId;
+
         const res = await fetch('/api/checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ priceId }),
+            body: JSON.stringify(body),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erro ao criar sessão');
