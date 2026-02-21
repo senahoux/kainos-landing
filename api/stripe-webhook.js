@@ -202,7 +202,13 @@ async function handleCheckoutCompleted(session, res) {
         session.customer_email ||
         null;
 
-    console.log(`[webhook] checkout.session.completed | customer: ${session.customer} | sub: ${session.subscription} | email: ${email}`);
+    // subscription can be a string ID or an expanded object
+    const subscriptionId =
+        (session.subscription && typeof session.subscription === "object"
+            ? session.subscription.id
+            : session.subscription) || null;
+
+    console.log(`[webhook] checkout.session.completed | customer: ${session.customer} | sub: ${subscriptionId} | email: ${email}`);
 
     const { userId, source, error, ...extra } = await resolveUserId(
         session.client_reference_id,
@@ -214,22 +220,26 @@ async function handleCheckoutCompleted(session, res) {
         return res.status(500).json({ ok: false, reason: error, ...extra });
     }
 
-    // Fetch subscription for period end and price
+    // Fetch subscription details from Stripe
     let priceId = null;
     let currentPeriodEnd = null;
-    if (session.subscription) {
+    if (subscriptionId) {
         try {
-            const sub = await stripe.subscriptions.retrieve(session.subscription);
+            const sub = await stripe.subscriptions.retrieve(subscriptionId);
             priceId = sub.items.data[0]?.price?.id || null;
-            currentPeriodEnd = toIso(sub.current_period_end);
+            currentPeriodEnd = sub.current_period_end
+                ? new Date(sub.current_period_end * 1000).toISOString()
+                : null;
         } catch (err) {
             console.error("[webhook] failed to retrieve subscription:", err.message);
         }
     }
 
+    console.log(`[webhook] pre-upsert | user_id: ${userId} | source: ${source} | sub: ${subscriptionId} | period_end: ${currentPeriodEnd}`);
+
     const result = await upsertSubscription(userId, {
-        stripe_customer_id: session.customer,
-        stripe_subscription_id: session.subscription,
+        stripe_customer_id: session.customer || null,
+        stripe_subscription_id: subscriptionId,
         status: "active",
         price_id: priceId,
         current_period_end: currentPeriodEnd,
@@ -247,6 +257,12 @@ async function handleCheckoutCompleted(session, res) {
 async function handleInvoicePaid(invoice, res) {
     let email = invoice.customer_email || null;
 
+    // subscription can be a string ID or an expanded object
+    const subscriptionId =
+        (invoice.subscription && typeof invoice.subscription === "object"
+            ? invoice.subscription.id
+            : invoice.subscription) || null;
+
     // If email missing on invoice, fetch from Stripe customer
     if (!email && invoice.customer) {
         try {
@@ -257,7 +273,7 @@ async function handleInvoicePaid(invoice, res) {
         }
     }
 
-    console.log(`[webhook] invoice.paid | customer: ${invoice.customer} | sub: ${invoice.subscription} | email: ${email}`);
+    console.log(`[webhook] invoice.paid | customer: ${invoice.customer} | sub: ${subscriptionId} | email: ${email}`);
 
     const { userId, source, error, ...extra } = await resolveUserId(null, null, email);
 
@@ -266,18 +282,22 @@ async function handleInvoicePaid(invoice, res) {
     }
 
     let currentPeriodEnd = null;
-    if (invoice.subscription) {
+    if (subscriptionId) {
         try {
-            const sub = await stripe.subscriptions.retrieve(invoice.subscription);
-            currentPeriodEnd = toIso(sub.current_period_end);
+            const sub = await stripe.subscriptions.retrieve(subscriptionId);
+            currentPeriodEnd = sub.current_period_end
+                ? new Date(sub.current_period_end * 1000).toISOString()
+                : null;
         } catch (err) {
             console.error("[webhook] invoice.paid: failed to retrieve subscription:", err.message);
         }
     }
 
+    console.log(`[webhook] pre-upsert | user_id: ${userId} | source: ${source} | sub: ${subscriptionId} | period_end: ${currentPeriodEnd}`);
+
     const result = await upsertSubscription(userId, {
         stripe_customer_id: invoice.customer || null,
-        stripe_subscription_id: invoice.subscription || null,  // may be undefined if not a subscription invoice
+        stripe_subscription_id: subscriptionId,
         status: "active",
         current_period_end: currentPeriodEnd,
         customer_email: email,
