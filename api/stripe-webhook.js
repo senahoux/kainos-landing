@@ -1,22 +1,25 @@
 // Vercel Serverless Function — Stripe webhook handler
 // POST /api/stripe-webhook
 //
-// IMPORTANT: This function reads the raw request body BEFORE any JSON parse
-// because Stripe's signature verification requires the exact bytes sent by Stripe.
-// Vercel buffers the body in the readable stream; we collect it manually.
+// Raw body is collected manually from the Node.js stream before any parsing
+// so that Stripe signature verification receives the exact bytes.
 //
-// Events handled:
-//   checkout.session.completed  → upsert subscription as active
-//   invoice.paid                → confirm subscription active (renewal)
-//   invoice.payment_failed      → set status past_due
-//   customer.subscription.deleted → cancel subscription
+// User-ID resolution priority (per event):
+//   1. session.client_reference_id
+//   2. session.metadata.user_id
+//   3. Email → lookup profiles.id in Supabase (mandatory fallback for landing flow)
+//
+// HTTP semantics:
+//   200 — event processed and written to DB, OR event type not handled
+//   400 — bad request / signature failure (Stripe will retry)
+//   500 — user not found by any strategy, or Supabase write failed
+//         (Stripe will retry, which is what we want until data is consistent)
 
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Use service-role key to bypass RLS and write from server side
 const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -24,29 +27,7 @@ const supabase = createClient(
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
-// ─── Profile helper ───────────────────────────────────────────────────────────
-/**
- * Sync profiles.is_premium based on subscription status.
- * Only runs when userId is known — email-only (landing) flow skips this
- * because there is no auth.users row yet (link happens on first Google login).
- */
-async function setProfilePremium(userId, isPremium) {
-    if (!userId) return;
-    const { error } = await supabase
-        .from("profiles")
-        .update({ is_premium: isPremium })
-        .eq("id", userId);
-    if (error) {
-        console.error(`[webhook] profiles.is_premium=${isPremium} update failed for ${userId}:`, error.message);
-    } else {
-        console.log(`[webhook] profiles.is_premium=${isPremium} for user_id: ${userId}`);
-    }
-}
-
 // ─── Raw body collector ────────────────────────────────────────────────────────
-// Vercel gives us a Node.js IncomingMessage (readable stream).
-// We must collect the bytes ourselves — do NOT call res.json() or body-parsers
-// before this, or the stream will be consumed and verification will fail.
 function getRawBody(req) {
     return new Promise((resolve, reject) => {
         const chunks = [];
@@ -56,231 +37,314 @@ function getRawBody(req) {
     });
 }
 
-// ─── Handler ──────────────────────────────────────────────────────────────────
+// ─── User-ID resolver ─────────────────────────────────────────────────────────
+/**
+ * Returns { userId, source } where source is one of:
+ *   "client_reference_id" | "metadata" | "email"
+ *
+ * Returns { userId: null, source: null, error } when resolution fails.
+ * The caller must return HTTP 500 in that case so Stripe retries.
+ */
+async function resolveUserId(directId, metadata, email) {
+    // 1. client_reference_id (set when user was already logged in)
+    if (directId) {
+        console.log(`[webhook] user_id resolved via client_reference_id: ${directId}`);
+        return { userId: directId, source: "client_reference_id" };
+    }
+
+    // 2. metadata.user_id (belt-and-suspenders copy of the same value)
+    const metaId = metadata?.user_id;
+    if (metaId) {
+        console.log(`[webhook] user_id resolved via metadata: ${metaId}`);
+        return { userId: metaId, source: "metadata" };
+    }
+
+    // 3. Email fallback — mandatory for landing flow where user pays before signing up
+    if (!email) {
+        console.error("[webhook] resolveUserId: no client_reference_id, no metadata, no email — cannot resolve");
+        return { userId: null, source: null, error: "no_email_available" };
+    }
+
+    console.log(`[webhook] resolving user_id by email: ${email}`);
+    const { data: profile, error: dbError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+
+    if (dbError) {
+        console.error(`[webhook] profiles lookup error for email ${email}:`, dbError.message);
+        return { userId: null, source: null, error: "db_error", detail: dbError.message };
+    }
+
+    if (!profile) {
+        console.error(`[webhook] profile_not_found_for_email: ${email}`);
+        return { userId: null, source: null, error: "profile_not_found_for_email", email };
+    }
+
+    console.log(`[webhook] user_id resolved via email (${email}): ${profile.id}`);
+    return { userId: profile.id, source: "email" };
+}
+
+// ─── profiles.is_premium sync ─────────────────────────────────────────────────
+async function setProfilePremium(userId, isPremium) {
+    if (!userId) return;
+    const { error } = await supabase
+        .from("profiles")
+        .update({ is_premium: isPremium })
+        .eq("id", userId);
+    if (error) {
+        console.error(`[webhook] profiles.is_premium=${isPremium} failed for ${userId}:`, error.message);
+    } else {
+        console.log(`[webhook] profiles.is_premium=${isPremium} for user_id: ${userId}`);
+    }
+}
+
+// ─── Subscription upsert ──────────────────────────────────────────────────────
+/**
+ * Upsert into public.subscriptions.
+ * Always conflicts on user_id (only one active subscription per user).
+ * Returns true on success, false on error.
+ */
+async function upsertSubscription(userId, fields) {
+    const payload = {
+        user_id: userId,
+        updated_at: new Date().toISOString(),
+        ...fields,
+    };
+
+    console.log(`[webhook] upserting subscription for user_id: ${userId} | status: ${fields.status} | sub: ${fields.stripe_subscription_id}`);
+
+    const { error } = await supabase
+        .from("subscriptions")
+        .upsert(payload, { onConflict: "user_id" });
+
+    if (error) {
+        console.error(`[webhook] subscriptions upsert failed for user_id ${userId}:`, error.message);
+        return false;
+    }
+
+    console.log(`[webhook] subscriptions upsert OK for user_id: ${userId}`);
+    return true;
+}
+
+// ─── Main handler ─────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
     if (req.method !== "POST") {
-        return res.status(405).json({ error: "Method not allowed" });
+        return res.status(405).json({ ok: false, reason: "method_not_allowed" });
     }
 
     if (!WEBHOOK_SECRET) {
-        console.error("[webhook] STRIPE_WEBHOOK_SECRET is not set");
-        return res.status(500).json({ error: "Webhook secret not configured" });
+        console.error("[webhook] STRIPE_WEBHOOK_SECRET not set");
+        return res.status(500).json({ ok: false, reason: "webhook_secret_not_configured" });
     }
 
-    // 1. Collect raw bytes
     let rawBody;
     try {
         rawBody = await getRawBody(req);
     } catch (err) {
-        console.error("[webhook] Failed to read raw body:", err.message);
-        return res.status(400).send("Could not read request body");
+        console.error("[webhook] failed to read raw body:", err.message);
+        return res.status(400).json({ ok: false, reason: "cannot_read_body" });
     }
 
-    // 2. Verify Stripe signature
     const sig = req.headers["stripe-signature"];
     let event;
     try {
         event = stripe.webhooks.constructEvent(rawBody, sig, WEBHOOK_SECRET);
     } catch (err) {
-        console.error("[webhook] Signature verification failed:", err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
+        console.error("[webhook] signature verification failed:", err.message);
+        return res.status(400).json({ ok: false, reason: "signature_failed", detail: err.message });
     }
 
-    // 3. Route events
-    console.log(`[webhook] Received event: ${event.type} (${event.id})`);
+    console.log(`[webhook] event received: ${event.type} | id: ${event.id}`);
 
     try {
         switch (event.type) {
             case "checkout.session.completed":
-                await handleCheckoutCompleted(event.data.object);
-                break;
+                return await handleCheckoutCompleted(event.data.object, res);
             case "invoice.paid":
-                await handleInvoicePaid(event.data.object);
-                break;
+                return await handleInvoicePaid(event.data.object, res);
             case "invoice.payment_failed":
-                await handleInvoicePaymentFailed(event.data.object);
-                break;
+                return await handleInvoicePaymentFailed(event.data.object, res);
             case "customer.subscription.deleted":
-                await handleSubscriptionDeleted(event.data.object);
-                break;
+                return await handleSubscriptionDeleted(event.data.object, res);
             default:
-                console.log(`[webhook] Unhandled event type: ${event.type}`);
+                console.log(`[webhook] unhandled event type: ${event.type} — returning 200`);
+                return res.status(200).json({ ok: true, reason: "event_not_handled" });
         }
     } catch (err) {
-        // Log the error but return 200 to avoid Stripe retrying indefinitely
-        // for bugs on our side — re-throw only for transient errors if needed.
-        console.error(`[webhook] Handler error for ${event.type}:`, err.message);
+        console.error(`[webhook] unhandled exception in ${event.type}:`, err.message);
+        return res.status(500).json({ ok: false, reason: "internal_error", detail: err.message });
     }
-
-    return res.status(200).json({ received: true });
 }
 
 // ─── Event handlers ───────────────────────────────────────────────────────────
 
-/**
- * checkout.session.completed
- * Fired once after a successful checkout. We upsert the subscription record.
- *
- * User identification priority:
- *   1. session.client_reference_id  — set when user was logged in before checkout
- *   2. session.metadata.user_id     — same value, belt-and-suspenders copy
- *   3. customer_email               — landing flow: user pays before creating account
- */
-async function handleCheckoutCompleted(session) {
-    const userId =
-        session.client_reference_id ||
-        session.metadata?.user_id ||
-        null;
-    const customerEmail =
-        session.customer_email ||
+async function handleCheckoutCompleted(session, res) {
+    const email =
         session.customer_details?.email ||
+        session.customer_email ||
         null;
-    const stripeCustomerId = session.customer;
-    const stripeSubscriptionId = session.subscription;
 
-    if (!stripeSubscriptionId) {
-        console.warn("[webhook] checkout.session.completed: no subscription ID, skipping");
-        return;
+    console.log(`[webhook] checkout.session.completed | customer: ${session.customer} | sub: ${session.subscription} | email: ${email}`);
+
+    const { userId, source, error, ...extra } = await resolveUserId(
+        session.client_reference_id,
+        session.metadata,
+        email
+    );
+
+    if (!userId) {
+        return res.status(500).json({ ok: false, reason: error, ...extra });
     }
 
-    // Fetch full subscription for current_period_end and price
+    // Fetch subscription for period end and price
     let priceId = null;
     let currentPeriodEnd = null;
-    try {
-        const stripeSub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
-        priceId = stripeSub.items.data[0]?.price?.id || null;
-        currentPeriodEnd = new Date(stripeSub.current_period_end * 1000).toISOString();
-    } catch (err) {
-        console.error("[webhook] Failed to retrieve subscription from Stripe:", err.message);
+    if (session.subscription) {
+        try {
+            const sub = await stripe.subscriptions.retrieve(session.subscription);
+            priceId = sub.items.data[0]?.price?.id || null;
+            currentPeriodEnd = new Date(sub.current_period_end * 1000).toISOString();
+        } catch (err) {
+            console.error("[webhook] failed to retrieve subscription:", err.message);
+        }
     }
 
-    const payload = {
-        stripe_customer_id: stripeCustomerId,
-        stripe_subscription_id: stripeSubscriptionId,
+    const ok = await upsertSubscription(userId, {
+        stripe_customer_id: session.customer,
+        stripe_subscription_id: session.subscription,
         status: "active",
         price_id: priceId,
         current_period_end: currentPeriodEnd,
-        customer_email: customerEmail,
-        updated_at: new Date().toISOString(),
-    };
+        customer_email: email,
+    });
 
-    if (userId) {
-        // Flow 1: User was logged in — link directly by user_id
-        const { error } = await supabase
-            .from("subscriptions")
-            .upsert({ ...payload, user_id: userId }, { onConflict: "user_id" });
-
-        if (error) {
-            console.error("[webhook] DB upsert by user_id failed:", error.message);
-        } else {
-            console.log(`[webhook] Subscription linked to user_id: ${userId}`);
-            await setProfilePremium(userId, true);
-        }
-    } else if (customerEmail) {
-        // Flow 2: Landing page flow — user pays before creating account.
-        // Save with null user_id; a DB trigger will link it on first Google login.
-        const { error } = await supabase
-            .from("subscriptions")
-            .upsert(
-                { ...payload, user_id: null },
-                { onConflict: "customer_email" } // partial unique index WHERE user_id IS NULL
-            );
-
-        if (error) {
-            console.error("[webhook] DB upsert by email failed:", error.message);
-        } else {
-            console.log(`[webhook] Subscription saved by email (pending link): ${customerEmail}`);
-            // profiles.is_premium will be set by the DB trigger when user logs in with Google
-        }
-    } else {
-        console.error("[webhook] checkout.session.completed: no user_id or email — cannot save subscription");
+    if (!ok) {
+        return res.status(500).json({ ok: false, reason: "supabase_upsert_failed" });
     }
+
+    await setProfilePremium(userId, true);
+    return res.status(200).json({ ok: true, user_id: userId, source });
 }
 
-/**
- * invoice.paid
- * Fires on every successful renewal. Keeps status = active and updates period end.
- */
-async function handleInvoicePaid(invoice) {
-    const stripeSubscriptionId = invoice.subscription;
-    if (!stripeSubscriptionId) return;
+async function handleInvoicePaid(invoice, res) {
+    let email = invoice.customer_email || null;
+
+    // If email missing on invoice, fetch from Stripe customer
+    if (!email && invoice.customer) {
+        try {
+            const customer = await stripe.customers.retrieve(invoice.customer);
+            email = customer.email || null;
+        } catch (err) {
+            console.error("[webhook] invoice.paid: failed to retrieve customer email:", err.message);
+        }
+    }
+
+    console.log(`[webhook] invoice.paid | customer: ${invoice.customer} | sub: ${invoice.subscription} | email: ${email}`);
+
+    const { userId, source, error, ...extra } = await resolveUserId(null, null, email);
+
+    if (!userId) {
+        return res.status(500).json({ ok: false, reason: error, ...extra });
+    }
 
     let currentPeriodEnd = null;
-    try {
-        const stripeSub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
-        currentPeriodEnd = new Date(stripeSub.current_period_end * 1000).toISOString();
-    } catch (err) {
-        console.error("[webhook] invoice.paid: failed to retrieve subscription:", err.message);
+    if (invoice.subscription) {
+        try {
+            const sub = await stripe.subscriptions.retrieve(invoice.subscription);
+            currentPeriodEnd = new Date(sub.current_period_end * 1000).toISOString();
+        } catch (err) {
+            console.error("[webhook] invoice.paid: failed to retrieve subscription:", err.message);
+        }
     }
 
-    const { data, error } = await supabase
-        .from("subscriptions")
-        .update({
-            status: "active",
-            current_period_end: currentPeriodEnd,
-            updated_at: new Date().toISOString(),
-        })
-        .eq("stripe_subscription_id", stripeSubscriptionId)
-        .select("user_id")
-        .single();
+    const ok = await upsertSubscription(userId, {
+        stripe_customer_id: invoice.customer,
+        stripe_subscription_id: invoice.subscription,
+        status: "active",
+        current_period_end: currentPeriodEnd,
+        customer_email: email,
+    });
 
-    if (error) {
-        console.error("[webhook] invoice.paid DB update failed:", error.message);
-    } else {
-        console.log(`[webhook] invoice.paid → status=active for sub: ${stripeSubscriptionId}`);
-        await setProfilePremium(data?.user_id, true);
+    if (!ok) {
+        return res.status(500).json({ ok: false, reason: "supabase_upsert_failed" });
     }
+
+    await setProfilePremium(userId, true);
+    return res.status(200).json({ ok: true, user_id: userId, source });
 }
 
-/**
- * invoice.payment_failed
- * Payment failed (e.g. expired card). Move to past_due; user retains access
- * temporarily (Stripe will retry) — app can show a warning banner.
- */
-async function handleInvoicePaymentFailed(invoice) {
-    const stripeSubscriptionId = invoice.subscription;
-    if (!stripeSubscriptionId) return;
+async function handleInvoicePaymentFailed(invoice, res) {
+    let email = invoice.customer_email || null;
 
-    const { data, error } = await supabase
-        .from("subscriptions")
-        .update({
-            status: "past_due",
-            updated_at: new Date().toISOString(),
-        })
-        .eq("stripe_subscription_id", stripeSubscriptionId)
-        .select("user_id")
-        .single();
-
-    if (error) {
-        console.error("[webhook] invoice.payment_failed DB update failed:", error.message);
-    } else {
-        console.log(`[webhook] invoice.payment_failed → status=past_due for sub: ${stripeSubscriptionId}`);
-        await setProfilePremium(data?.user_id, false);
+    if (!email && invoice.customer) {
+        try {
+            const customer = await stripe.customers.retrieve(invoice.customer);
+            email = customer.email || null;
+        } catch (err) {
+            console.error("[webhook] invoice.payment_failed: failed to retrieve customer:", err.message);
+        }
     }
+
+    console.log(`[webhook] invoice.payment_failed | customer: ${invoice.customer} | sub: ${invoice.subscription} | email: ${email}`);
+
+    const { userId, source, error, ...extra } = await resolveUserId(null, null, email);
+
+    if (!userId) {
+        return res.status(500).json({ ok: false, reason: error, ...extra });
+    }
+
+    const ok = await upsertSubscription(userId, {
+        stripe_customer_id: invoice.customer,
+        stripe_subscription_id: invoice.subscription,
+        status: "past_due",
+        customer_email: email,
+    });
+
+    if (!ok) {
+        return res.status(500).json({ ok: false, reason: "supabase_upsert_failed" });
+    }
+
+    await setProfilePremium(userId, false);
+    return res.status(200).json({ ok: true, user_id: userId, source });
 }
 
-/**
- * customer.subscription.deleted
- * Subscription was cancelled (immediately or at period end).
- * Sets status = canceled. App gates access by checking status.
- */
-async function handleSubscriptionDeleted(subscription) {
+async function handleSubscriptionDeleted(subscription, res) {
+    // For subscription.deleted we look up by stripe_subscription_id in our DB
+    // then derive the user_id from there — no email needed.
     const stripeSubscriptionId = subscription.id;
 
-    const { data, error } = await supabase
+    console.log(`[webhook] customer.subscription.deleted | sub: ${stripeSubscriptionId}`);
+
+    const { data: row, error: lookupError } = await supabase
         .from("subscriptions")
-        .update({
-            status: "canceled",
-            updated_at: new Date().toISOString(),
-        })
+        .select("user_id, customer_email")
         .eq("stripe_subscription_id", stripeSubscriptionId)
-        .select("user_id")
-        .single();
+        .maybeSingle();
+
+    if (lookupError) {
+        console.error("[webhook] subscription.deleted: DB lookup failed:", lookupError.message);
+        return res.status(500).json({ ok: false, reason: "db_lookup_failed" });
+    }
+
+    if (!row) {
+        // Subscription not in our DB yet — nothing to cancel
+        console.warn(`[webhook] subscription.deleted: sub ${stripeSubscriptionId} not found in DB, skipping`);
+        return res.status(200).json({ ok: true, reason: "subscription_not_in_db" });
+    }
+
+    const { error } = await supabase
+        .from("subscriptions")
+        .update({ status: "canceled", updated_at: new Date().toISOString() })
+        .eq("stripe_subscription_id", stripeSubscriptionId);
 
     if (error) {
-        console.error("[webhook] subscription.deleted DB update failed:", error.message);
-    } else {
-        console.log(`[webhook] subscription.deleted → status=canceled for sub: ${stripeSubscriptionId}`);
-        await setProfilePremium(data?.user_id, false);
+        console.error("[webhook] subscription.deleted: update failed:", error.message);
+        return res.status(500).json({ ok: false, reason: "supabase_update_failed" });
     }
+
+    console.log(`[webhook] subscription.deleted → status=canceled for sub: ${stripeSubscriptionId}`);
+    await setProfilePremium(row.user_id, false);
+    return res.status(200).json({ ok: true, user_id: row.user_id });
 }
