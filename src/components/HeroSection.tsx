@@ -23,9 +23,7 @@ const HeroSection: React.FC = () => {
 
                 {/* Subheadline */}
                 <p className="text-zinc-400 text-lg sm:text-xl max-w-2xl leading-relaxed">
-                    Não é falta de caráter. É neurobiologia. Por isso o Protocolo Kainós une a{' '}
-                    <span className="text-zinc-200 font-medium">Ciência, Fé e rotina</span>{' '}
-                    pra reconstruir quem você deveria ser.
+                    Um sistema estruturado com base na neurociência comportamental que capacita você a vencer vícios de forma inteligente e estratégica.
                 </p>
 
                 {/* CTA Button */}
@@ -34,7 +32,7 @@ const HeroSection: React.FC = () => {
                     className="group inline-flex items-center gap-3 px-8 py-5 rounded-full bg-orange-500 text-white font-bold text-base sm:text-lg tracking-wide hover:bg-orange-400 transition-all duration-300 glow-orange hover:scale-105"
                     style={{ boxShadow: '0 0 40px -10px rgba(249,115,22,0.5)' }}
                 >
-                    INICIAR PROTOCOLO DE DESINTOXICAÇÃO
+                    INICIAR TRANSFORMAÇÃO
                     <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform duration-300" />
                 </a>
 
