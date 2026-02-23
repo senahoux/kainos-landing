@@ -74,63 +74,80 @@ const SolutionSection: React.FC = () => {
                     </p>
                 </div>
 
-                {/* Phone gallery */}
-                <div className="relative flex items-end justify-center gap-4 sm:gap-6">
+                {/* Phone gallery carousel */}
+                <div className="relative group">
                     {/* Ambient glow behind phones */}
                     <div
-                        className="absolute inset-0 -z-10 blur-3xl opacity-20"
+                        className="absolute inset-0 -z-10 blur-3xl opacity-20 pointer-events-none"
                         style={{
                             background:
                                 'radial-gradient(ellipse 70% 60% at 50% 80%, rgba(249,115,22,0.4) 0%, transparent 70%)',
                         }}
                     />
 
-                    {screens.map((screen, i) => {
-                        const isCenter = i === 1;
-                        return (
-                            <div
-                                key={screen.label}
-                                className={`flex flex-col items-center gap-4 transition-all duration-500 ${isCenter
-                                    ? 'z-20 scale-110 sm:scale-115'
-                                    : 'z-10 opacity-80 hover:opacity-100'
-                                    }`}
-                                style={{ flex: isCenter ? '0 0 auto' : '0 0 auto' }}
-                            >
-                                {/* Phone frame */}
+                    {/* Scrollable Container */}
+                    <div
+                        className="flex overflow-x-auto no-scrollbar snap-x snap-mandatory pt-10 pb-16 px-[10vw] sm:px-0 sm:justify-center items-end gap-6 sm:gap-8 scroll-smooth"
+                    >
+                        {screens.map((screen, i) => {
+                            const isCenterOnDesktop = i === 1;
+                            return (
                                 <div
-                                    className={`relative rounded-[2.5rem] overflow-hidden border ${isCenter
-                                        ? 'border-orange-500/40 shadow-[0_0_60px_-10px_rgba(249,115,22,0.4)]'
-                                        : 'border-zinc-700/50 shadow-2xl'
+                                    key={screen.label}
+                                    className={`flex-shrink-0 snap-center flex flex-col items-center gap-6 transition-all duration-500 w-[75vw] sm:w-auto ${isCenterOnDesktop ? 'sm:scale-115 sm:z-20' : 'sm:opacity-60 sm:scale-95 sm:z-10'
                                         }`}
-                                    style={{
-                                        width: isCenter ? 'clamp(220px, 30vw, 340px)' : 'clamp(170px, 22vw, 260px)',
-                                    }}
                                 >
-                                    <img
-                                        src={screen.src}
-                                        alt={`Tela ${screen.label} do app Kainós`}
-                                        className="w-full h-auto block"
-                                        loading="lazy"
-                                    />
-                                    {/* Subtle overlay for side phones */}
-                                    {!isCenter && (
-                                        <div className="absolute inset-0 bg-black/20" />
-                                    )}
-                                </div>
-
-                                {/* Label */}
-                                <div className="text-center">
-                                    <p
-                                        className={`font-bold text-sm ${isCenter ? 'text-orange-400' : 'text-zinc-400'
+                                    {/* Phone frame */}
+                                    <div
+                                        className={`relative rounded-[2.5rem] overflow-hidden border transition-all duration-500 ${isCenterOnDesktop
+                                                ? 'border-orange-500/40 shadow-[0_0_60px_-10px_rgba(249,115,22,0.4)]'
+                                                : 'border-zinc-700/50 shadow-2xl'
                                             }`}
+                                        style={{
+                                            width: '100%',
+                                            maxWidth: isCenterOnDesktop ? '340px' : '280px',
+                                        }}
                                     >
-                                        {screen.label}
-                                    </p>
-                                    <p className="text-zinc-600 text-xs">{screen.desc}</p>
+                                        <img
+                                            src={screen.src}
+                                            alt={`Tela ${screen.label} do app Kainós`}
+                                            className="w-full h-auto block"
+                                            loading="lazy"
+                                        />
+
+                                        {/* Dynamic Overlay for non-center (Desktop Only) */}
+                                        <div className={`absolute inset-0 bg-black/20 transition-opacity duration-500 hidden sm:block ${isCenterOnDesktop ? 'opacity-0' : 'opacity-100'}`} />
+                                    </div>
+
+                                    {/* Label */}
+                                    <div className="text-center px-4 max-w-[280px]">
+                                        <p className="font-bold text-base text-orange-400 mb-1">
+                                            {screen.label}
+                                        </p>
+                                        <p className="text-zinc-500 text-sm leading-snug">
+                                            {screen.desc}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
+
+                    {/* Mobile Hint (Pagination Dots) */}
+                    <div className="flex justify-center gap-2 mt-2 sm:hidden">
+                        {screens.map((_, i) => (
+                            <div
+                                key={i}
+                                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === 1 ? 'bg-orange-500 w-4' : 'bg-zinc-800'
+                                    }`}
+                            />
+                        ))}
+                    </div>
+
+                    {/* Visual Hint for Mobile Swipe */}
+                    <div className="text-center mt-6 sm:hidden text-zinc-600 text-[10px] uppercase font-bold tracking-[0.2em] animate-pulse">
+                        ← deslize para explorar →
+                    </div>
                 </div>
 
                 {/* AI Therapist Highlight */}
