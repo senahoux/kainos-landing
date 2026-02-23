@@ -2,6 +2,7 @@
   "rewrites": [
     { "source": "/api/checkout", "destination": "/api/checkout" },
     { "source": "/api/stripe-webhook", "destination": "/api/stripe-webhook" },
+    { "source": "/api/stripe-session", "destination": "/api/stripe-session" },
 
     { "source": "/api/:path*", "destination": "https://kainos-app-main.vercel.app/api/:path*" },
 

@@ -1,12 +1,71 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CheckCircle, LogIn, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const APP_URL = import.meta.env.VITE_APP_URL || 'https://kainos-app-main.vercel.app';
 
+declare global {
+    interface Window {
+        fbq: any;
+    }
+}
+
 const SuccessPage: React.FC = () => {
+    const [searchParams] = useSearchParams();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const sessionId = searchParams.get('session_id');
+
+    useEffect(() => {
+        const trackPurchase = async () => {
+            if (!sessionId) return;
+            console.log('[Meta Pixel] Starting purchase track check for session:', sessionId);
+
+            // Check if purchase was already tracked for this session
+            const trackerKey = `purchase_sent_${sessionId}`;
+            if (localStorage.getItem(trackerKey)) {
+                console.log('[Meta Pixel] Purchase already tracked in this browser for this session.');
+                return;
+            }
+
+            try {
+                console.log('[Meta Pixel] Validating session via API...');
+                // Validate session with our backend
+                const response = await fetch(`/api/stripe-session?session_id=${sessionId}`);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error('[Meta Pixel] API Validation failed:', response.status, errorData);
+                    return;
+                }
+
+                const data = await response.json();
+                console.log('[Meta Pixel] Session data received:', data);
+
+                // Only track if payment is confirmed
+                if (data.value > 0 && (data.payment_status === 'paid' || data.payment_status === 'no_payment_required')) {
+                    if (typeof window.fbq === 'function') {
+                        console.log('[Meta Pixel] Firing Purchase event:', { value: data.value, currency: data.currency });
+                        window.fbq('track', 'Purchase', {
+                            value: data.value,
+                            currency: data.currency || 'BRL'
+                        });
+                        localStorage.setItem(trackerKey, 'true');
+                        console.log('[Meta Pixel] Purchase event SENT and stored in localStorage.');
+                    } else {
+                        console.error('[Meta Pixel] ERROR: window.fbq is not a function!');
+                    }
+                } else {
+                    console.warn('[Meta Pixel] Skipping Purchase track: payment_status is', data.payment_status, 'or value is', data.value);
+                }
+            } catch (err) {
+                console.error('[Meta Pixel] Critical error during tracking:', err);
+            }
+        };
+
+        trackPurchase();
+    }, [sessionId]);
 
     const handleGoogleLogin = async () => {
         setLoading(true);
