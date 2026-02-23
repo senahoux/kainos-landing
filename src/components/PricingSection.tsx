@@ -20,8 +20,24 @@ const annualFeatures = [
     'Economia de R$ 132/ano',
 ];
 
+const PLAN_VALUES: Record<string, number> = {
+    [PRICE_ID_MONTHLY]: 35,
+    [PRICE_ID_YEARLY]: 288,
+};
+
 async function startCheckout(priceId: string, setLoading: (v: string | null) => void) {
     setLoading(priceId);
+
+    // Fire Meta Pixel InitiateCheckout before redirecting
+    if (typeof window !== 'undefined' && typeof (window as any).fbq === 'function') {
+        (window as any).fbq('track', 'InitiateCheckout', {
+            content_name: 'Kainos Pro',
+            content_type: 'subscription',
+            value: PLAN_VALUES[priceId] ?? 0,
+            currency: 'BRL',
+        });
+    }
+
     try {
         // Get the current logged-in user if any (optional — landing users may not be logged in yet)
         const { data: { session } } = await supabase.auth.getSession();
