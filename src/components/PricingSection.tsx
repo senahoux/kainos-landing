@@ -92,7 +92,6 @@ const PricingSection: React.FC = () => {
 
                 {/* Header */}
                 <div className="text-center flex flex-col gap-4">
-                    <p className="text-zinc-500 text-lg">Você não precisa continuar pagando esse preço.</p>
                     <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white">
                         Escolha o seu plano de{' '}
                         <span className="text-orange-500">liberdade</span>

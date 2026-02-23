@@ -65,6 +65,19 @@ const PriceOfAddictionSection: React.FC = () => {
                         ))}
                     </ul>
                 </div>
+
+                {/* Final CTA/Transition */}
+                <div className="text-center flex flex-col gap-2 mt-4">
+                    <p className="text-orange-500 font-bold text-lg sm:text-xl">
+                        Você não precisa continuar pagando esse preço.
+                    </p>
+                    <p className="text-white text-base sm:text-lg">
+                        Dê um passo firme em direção à sua transformação.
+                    </p>
+                    <p className="text-zinc-500 text-sm sm:text-base">
+                        Entre para o Kainós e comece uma nova história hoje.
+                    </p>
+                </div>
             </div>
         </section>
     );
