@@ -133,6 +133,57 @@ const SolutionSection: React.FC = () => {
                     })}
                 </div>
 
+                {/* AI Therapist Highlight */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center bg-zinc-900/40 border border-zinc-800/50 rounded-3xl p-8 md:p-12 relative overflow-hidden">
+                    {/* Background glow */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full -z-10 blur-[120px] opacity-20 bg-blue-500/30" />
+
+                    <div className="flex flex-col gap-6 order-2 md:order-1">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-wider w-fit">
+                            Sua IA Terapeuta, disponível todos os dias
+                        </div>
+
+                        <div className="flex flex-col gap-4">
+                            <h3 className="text-2xl sm:text-3xl font-black text-white leading-tight">
+                                No Kainós, você <span className="text-blue-400">não está sozinho.</span>
+                            </h3>
+                            <p className="text-zinc-400 text-base sm:text-lg leading-relaxed">
+                                Nossa IA Terapeuta foi treinada especificamente para auxiliar no processo de mudança de hábitos, fortalecimento emocional e construção de disciplina.
+                            </p>
+                            <p className="text-zinc-400 text-base sm:text-lg leading-relaxed">
+                                Ela analisa seus registros, identifica padrões de comportamento e entrega orientações claras e práticas para manter você no caminho certo.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                                <p className="text-white font-bold text-sm mb-1">Não é apenas motivação</p>
+                                <p className="text-zinc-500 text-xs">É direcionamento estruturado.</p>
+                            </div>
+                            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                                <p className="text-white font-bold text-sm mb-1">Suporte contínuo</p>
+                                <p className="text-zinc-500 text-xs">Apoio nos momentos difíceis e reforço nas vitórias.</p>
+                            </div>
+                        </div>
+
+                        <p className="text-zinc-600 text-[10px] sm:text-xs italic">
+                            (Ela não substitui um profissional)
+                        </p>
+                    </div>
+
+                    <div className="order-1 md:order-2 relative group">
+                        {/* Image container with glow */}
+                        <div className="relative rounded-2xl overflow-hidden aspect-[3/4] max-w-[400px] mx-auto border border-blue-500/30 shadow-[0_0_50px_-10px_rgba(59,130,246,0.3)]">
+                            <img
+                                src="/ia-terapeuta.jpg"
+                                alt="IA Terapeuta Kainós"
+                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                        </div>
+                    </div>
+                </div>
+
                 {/* Feature cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {features.map((f) => {

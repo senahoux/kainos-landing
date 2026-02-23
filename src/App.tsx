@@ -22,9 +22,9 @@ function LandingLayout() {
         <DiagnosisSection />
         <BridgeSection />
         <SolutionSection />
-        <FounderSection />
         <PriceOfAddictionSection />
         <PricingSection />
+        <FounderSection />
         <FAQSection />
       </main>
       <Footer />
