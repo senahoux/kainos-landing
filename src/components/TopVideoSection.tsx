@@ -93,63 +93,65 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
                 </div>
 
                 {/* Video & Sidebar Container */}
-                <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-5 gap-8 items-center justify-center">
                     {/* Video Player Column */}
-                    <div className="lg:col-span-2 relative aspect-video bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl group">
-                        <video
-                            ref={videoRef}
-                            src="https://pub-9966bcca8c18406581ef1218835c7416.r2.dev/landing-vsl/videos/0225.mp4"
-                            className="w-full h-full object-cover"
-                            playsInline
-                            preload="metadata"
-                            onClick={handlePlayPause}
-                        />
+                    <div className="lg:col-span-3 flex justify-center">
+                        <div className="relative aspect-[9/16] w-full max-w-[360px] bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl group mx-auto">
+                            <video
+                                ref={videoRef}
+                                src="https://pub-9966bcca8c18406581ef1218835c7416.r2.dev/landing-vsl/videos/0225.mp4"
+                                className="w-full h-full object-cover"
+                                playsInline
+                                preload="metadata"
+                                onClick={handlePlayPause}
+                            />
 
-                        {/* Custom Controls Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 sm:p-6 gap-4">
-                            {/* Progress Bar Container */}
-                            <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-orange-500 transition-all duration-300 ease-linear shadow-[0_0_10px_rgba(249,115,22,0.5)]"
-                                    style={{ width: `${progress}%` }}
-                                />
-                            </div>
+                            {/* Custom Controls Overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 sm:p-6 gap-4">
+                                {/* Progress Bar Container */}
+                                <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-orange-500 transition-all duration-300 ease-linear shadow-[0_0_10px_rgba(249,115,22,0.5)]"
+                                        style={{ width: `${progress}%` }}
+                                    />
+                                </div>
 
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <button
+                                            onClick={handlePlayPause}
+                                            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors text-white"
+                                        >
+                                            {isPlaying ? <Pause size={20} fill="white" /> : <Play size={20} fill="white" className="ml-0.5" />}
+                                        </button>
+                                    </div>
+
                                     <button
-                                        onClick={handlePlayPause}
-                                        className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors text-white"
+                                        onClick={toggleSpeed}
+                                        className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors text-white text-xs font-bold flex items-center gap-2"
                                     >
-                                        {isPlaying ? <Pause size={20} fill="white" /> : <Play size={20} fill="white" className="ml-0.5" />}
+                                        <FastForward size={14} />
+                                        {playbackRate}x
                                     </button>
                                 </div>
+                            </div>
 
-                                <button
-                                    onClick={toggleSpeed}
-                                    className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors text-white text-xs font-bold flex items-center gap-2"
+                            {/* Initial Play Overlay */}
+                            {showPlayOverlay && (
+                                <div
+                                    className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] cursor-pointer"
+                                    onClick={handlePlayPause}
                                 >
-                                    <FastForward size={14} />
-                                    {playbackRate}x
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Initial Play Overlay */}
-                        {showPlayOverlay && (
-                            <div
-                                className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] cursor-pointer"
-                                onClick={handlePlayPause}
-                            >
-                                <div className="w-20 h-20 flex items-center justify-center rounded-full bg-orange-500 text-white shadow-[0_0_50px_rgba(249,115,22,0.5)] animate-pulse">
-                                    <Play size={40} fill="white" className="ml-2" />
+                                    <div className="w-20 h-20 flex items-center justify-center rounded-full bg-orange-500 text-white shadow-[0_0_50px_rgba(249,115,22,0.5)] animate-pulse">
+                                        <Play size={40} fill="white" className="ml-2" />
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
 
                     {/* Sidebar Column */}
-                    <div className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-2xl space-y-6">
+                    <div className="lg:col-span-2 bg-zinc-900/50 border border-zinc-800 p-8 rounded-2xl space-y-6 h-fit">
                         <h3 className="text-white font-black text-xl tracking-tight uppercase border-b border-zinc-800 pb-4">
                             O MÉTODO SERVE PARA:
                         </h3>
@@ -163,6 +165,7 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
                         </ul>
                     </div>
                 </div>
+
 
                 {/* Status Message */}
                 <div className="text-zinc-500 text-sm font-medium animate-pulse">
