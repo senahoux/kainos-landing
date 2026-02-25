@@ -40,9 +40,27 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
         const video = videoRef.current;
         if (!video) return;
 
+        // Restore time from localStorage
+        const savedTime = localStorage.getItem('vsl_current_time');
+        if (savedTime) {
+            const time = parseFloat(savedTime);
+            if (!isNaN(time)) {
+                video.currentTime = time;
+                setCurrentTime(time);
+                if (time >= UNLOCK_TIME) {
+                    onUnlock();
+                }
+            }
+        }
+
         const handleTimeUpdate = () => {
-            setCurrentTime(video.currentTime);
-            if (video.currentTime >= UNLOCK_TIME) {
+            const time = video.currentTime;
+            setCurrentTime(time);
+
+            // Periodically save to localStorage (e.g., every second)
+            localStorage.setItem('vsl_current_time', time.toString());
+
+            if (time >= UNLOCK_TIME) {
                 onUnlock();
             }
         };
@@ -54,6 +72,7 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
         const handleEnded = () => {
             onUnlock();
             setIsPlaying(false);
+            localStorage.removeItem('vsl_current_time'); // Clear when finished
         };
 
         const handleWaiting = () => setIsBuffering(true);
