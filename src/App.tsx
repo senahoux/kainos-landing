@@ -21,16 +21,12 @@ function LandingLayout() {
   const lockedContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isUnlocked) {
-      document.body.style.overflow = 'hidden';
-      window.scrollTo(0, 0);
-    } else {
-      document.body.style.overflow = 'auto';
+    // When locked, we just let the page height be defined by the TopVideoSection.
+    // We don't need to force overflow: hidden because the rest of the content is already h-0.
+    // This allows the user to scroll to see the full video if it's taller than the viewport.
+    if (isUnlocked) {
+      // No-op or any logic needed when unlocking
     }
-
-    return () => {
-      document.body.style.overflow = 'auto';
-    };
   }, [isUnlocked]);
 
   const handleUnlock = () => {
