@@ -15,6 +15,8 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
     const [playbackRate, setPlaybackRate] = useState(1);
     const [showPlayOverlay, setShowPlayOverlay] = useState(true);
 
+    const [isBuffering, setIsBuffering] = useState(false);
+
     const handlePlayPause = () => {
         if (!videoRef.current) return;
         if (videoRef.current.paused) {
@@ -54,9 +56,14 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
             setIsPlaying(false);
         };
 
+        const handleWaiting = () => setIsBuffering(true);
+        const handlePlaying = () => setIsBuffering(false);
+
         video.addEventListener('timeupdate', handleTimeUpdate);
         video.addEventListener('loadedmetadata', handleLoadedMetadata);
         video.addEventListener('ended', handleEnded);
+        video.addEventListener('waiting', handleWaiting);
+        video.addEventListener('playing', handlePlaying);
 
         // Attempt autoplay
         video.play().then(() => {
@@ -71,6 +78,8 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
             video.removeEventListener('timeupdate', handleTimeUpdate);
             video.removeEventListener('loadedmetadata', handleLoadedMetadata);
             video.removeEventListener('ended', handleEnded);
+            video.removeEventListener('waiting', handleWaiting);
+            video.removeEventListener('playing', handlePlaying);
         };
     }, [onUnlock]);
 
@@ -102,9 +111,17 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
                                 src="https://pub-9966bcca8c18406581ef1218835c7416.r2.dev/landing-vsl/videos/0225.mp4"
                                 className="w-full h-full object-cover"
                                 playsInline
-                                preload="metadata"
+                                preload="auto"
                                 onClick={handlePlayPause}
                             />
+
+                            {/* Buffering Indicator */}
+                            {isBuffering && isPlaying && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                                    <div className="w-12 h-12 border-4 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
+                                </div>
+                            )}
+
 
                             {/* Custom Controls Overlay */}
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 sm:p-6 gap-4">
