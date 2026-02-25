@@ -31,7 +31,7 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
 
     const toggleSpeed = () => {
         if (!videoRef.current) return;
-        const newRate = playbackRate === 1 ? 1.5 : playbackRate === 1.5 ? 2 : 1;
+        const newRate = playbackRate === 1 ? 1.5 : 1;
         videoRef.current.playbackRate = newRate;
         setPlaybackRate(newRate);
     };
