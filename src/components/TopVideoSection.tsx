@@ -165,8 +165,11 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
                             )}
 
 
-                            {/* Custom Controls Overlay */}
-                            <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent transition-opacity duration-300 flex flex-col justify-end p-4 sm:p-6 gap-4 ${showControls ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                            {/* Custom Controls Overlay - handles tap on whole video area */}
+                            <div
+                                className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent transition-opacity duration-300 flex flex-col justify-end p-4 sm:p-6 gap-4 ${showControls ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                                onClick={handleVideoTap}
+                            >
                                 {/* Progress Bar Container */}
                                 <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                                     <div
@@ -178,7 +181,7 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
                                         <button
-                                            onClick={handlePlayPause}
+                                            onClick={(e) => { e.stopPropagation(); handlePlayPause(); }}
                                             className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors text-white"
                                         >
                                             {isPlaying ? <Pause size={20} fill="white" /> : <Play size={20} fill="white" className="ml-0.5" />}
@@ -186,7 +189,7 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
                                     </div>
 
                                     <button
-                                        onClick={toggleSpeed}
+                                        onClick={(e) => { e.stopPropagation(); toggleSpeed(); }}
                                         className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors text-white text-xs font-bold flex items-center gap-2"
                                     >
                                         <FastForward size={14} />
