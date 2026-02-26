@@ -150,7 +150,7 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
                         <div className="relative aspect-[9/16] w-full max-w-[360px] bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl group mx-auto">
                             <video
                                 ref={videoRef}
-                                src="https://pub-9966bcca8c18406581ef1218835c7416.r2.dev/landing-vsl/videos/market.mp4"
+                                src="https://pub-9966bcca8c18406581ef1218835c7416.r2.dev/landing-vsl/videos/VIDEOLANDING.mp4"
                                 className="w-full h-full object-cover"
                                 playsInline
                                 preload="auto"
