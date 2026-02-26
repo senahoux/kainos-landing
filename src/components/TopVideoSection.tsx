@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, FastForward, CheckCircle2 } from 'lucide-react';
+import Hls from 'hls.js';
 
 interface TopVideoSectionProps {
     onUnlock: () => void;
@@ -59,30 +60,41 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
         setPlaybackRate(newRate);
     };
 
+    const HLS_URL = 'https://pub-9966bcca8c18406581ef1218835c7416.r2.dev/landing-vsl/hls/index.m3u8';
+
     useEffect(() => {
         const video = videoRef.current;
         if (!video) return;
 
-        // Restore time from localStorage
-        const savedTime = localStorage.getItem('vsl_current_time');
-        if (savedTime) {
-            const time = parseFloat(savedTime);
-            if (!isNaN(time)) {
-                video.currentTime = time;
-                setCurrentTime(time);
-                if (time >= UNLOCK_TIME) {
-                    onUnlock();
+        let hls: Hls | null = null;
+
+        const onReady = () => {
+            // Restore time from localStorage
+            const savedTime = localStorage.getItem('vsl_current_time');
+            if (savedTime) {
+                const time = parseFloat(savedTime);
+                if (!isNaN(time)) {
+                    video.currentTime = time;
+                    setCurrentTime(time);
+                    if (time >= UNLOCK_TIME) {
+                        onUnlock();
+                    }
                 }
             }
-        }
+
+            // Attempt autoplay
+            video.play().then(() => {
+                setIsPlaying(true);
+                setShowPlayOverlay(false);
+            }).catch(() => {
+                setShowPlayOverlay(true);
+            });
+        };
 
         const handleTimeUpdate = () => {
             const time = video.currentTime;
             setCurrentTime(time);
-
-            // Periodically save to localStorage (e.g., every second)
             localStorage.setItem('vsl_current_time', time.toString());
-
             if (time >= UNLOCK_TIME) {
                 onUnlock();
             }
@@ -95,7 +107,7 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
         const handleEnded = () => {
             onUnlock();
             setIsPlaying(false);
-            localStorage.removeItem('vsl_current_time'); // Clear when finished
+            localStorage.removeItem('vsl_current_time');
         };
 
         const handleWaiting = () => setIsBuffering(true);
@@ -107,14 +119,20 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
         video.addEventListener('waiting', handleWaiting);
         video.addEventListener('playing', handlePlaying);
 
-        // Attempt autoplay
-        video.play().then(() => {
-            setIsPlaying(true);
-            setShowPlayOverlay(false);
-        }).catch(() => {
-            // Autoplay blocked
-            setShowPlayOverlay(true);
-        });
+        if (Hls.isSupported()) {
+            // Chrome, Firefox, Android — use HLS.js
+            hls = new Hls({
+                maxBufferLength: 30,
+                maxMaxBufferLength: 60,
+            });
+            hls.loadSource(HLS_URL);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, onReady);
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            // Safari / iOS — native HLS support
+            video.src = HLS_URL;
+            video.addEventListener('loadedmetadata', onReady, { once: true });
+        }
 
         return () => {
             video.removeEventListener('timeupdate', handleTimeUpdate);
@@ -122,6 +140,9 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
             video.removeEventListener('ended', handleEnded);
             video.removeEventListener('waiting', handleWaiting);
             video.removeEventListener('playing', handlePlaying);
+            if (hls) {
+                hls.destroy();
+            }
         };
     }, [onUnlock]);
 
@@ -150,7 +171,6 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
                         <div className="relative aspect-[9/16] w-full max-w-[360px] bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl group mx-auto">
                             <video
                                 ref={videoRef}
-                                src="https://pub-9966bcca8c18406581ef1218835c7416.r2.dev/landing-vsl/videos/VIDEOLANDING.mp4"
                                 className="w-full h-full object-cover"
                                 playsInline
                                 preload="auto"
