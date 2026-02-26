@@ -14,8 +14,18 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
     const [duration, setDuration] = useState(0);
     const [playbackRate, setPlaybackRate] = useState(1);
     const [showPlayOverlay, setShowPlayOverlay] = useState(true);
+    const [showControls, setShowControls] = useState(true);
+    const controlsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [isBuffering, setIsBuffering] = useState(false);
+
+    const resetControlsTimer = () => {
+        if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
+        setShowControls(true);
+        controlsTimerRef.current = setTimeout(() => {
+            setShowControls(false);
+        }, 3000);
+    };
 
     const handlePlayPause = () => {
         if (!videoRef.current) return;
@@ -23,10 +33,17 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
             videoRef.current.play();
             setIsPlaying(true);
             setShowPlayOverlay(false);
+            resetControlsTimer();
         } else {
             videoRef.current.pause();
             setIsPlaying(false);
+            setShowControls(true);
+            if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
         }
+    };
+
+    const handleVideoTap = () => {
+        handlePlayPause();
     };
 
     const toggleSpeed = () => {
@@ -127,11 +144,11 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
                         <div className="relative aspect-[9/16] w-full max-w-[360px] bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl group mx-auto">
                             <video
                                 ref={videoRef}
-                                src="https://pub-9966bcca8c18406581ef1218835c7416.r2.dev/landing-vsl/videos/0225.mp4"
+                                src="https://pub-9966bcca8c18406581ef1218835c7416.r2.dev/landing-vsl/videos/market.mp4"
                                 className="w-full h-full object-cover"
                                 playsInline
                                 preload="auto"
-                                onClick={handlePlayPause}
+                                onClick={handleVideoTap}
                             />
 
                             {/* Buffering Indicator */}
@@ -143,7 +160,7 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
 
 
                             {/* Custom Controls Overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 sm:p-6 gap-4">
+                            <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent transition-opacity duration-300 flex flex-col justify-end p-4 sm:p-6 gap-4 ${showControls ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                                 {/* Progress Bar Container */}
                                 <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                                     <div
