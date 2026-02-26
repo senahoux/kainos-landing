@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import './index.css'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
@@ -29,14 +29,15 @@ function LandingLayout() {
     }
   }, [isUnlocked]);
 
-  const handleUnlock = () => {
-    if (isUnlocked) return;
-    setIsUnlocked(true);
-    // Smooth scroll to CTA when it appears
-    setTimeout(() => {
-      document.getElementById('ctaAfterVideo')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 100);
-  };
+  const handleUnlock = useCallback(() => {
+    setIsUnlocked(prev => {
+      if (prev) return prev; // already unlocked, no-op
+      setTimeout(() => {
+        document.getElementById('ctaAfterVideo')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+      return true;
+    });
+  }, []); // stable reference — never recreated
 
   const handleCTAClick = () => {
     // Scroll to the first section (Hero) or pricing if preferred

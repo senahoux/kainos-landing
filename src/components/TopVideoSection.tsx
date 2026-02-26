@@ -82,13 +82,15 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
                 }
             }
 
-            // Attempt autoplay
-            video.play().then(() => {
-                setIsPlaying(true);
-                setShowPlayOverlay(false);
-            }).catch(() => {
-                setShowPlayOverlay(true);
-            });
+            // Only attempt autoplay if the video isn't already playing
+            if (video.paused) {
+                video.play().then(() => {
+                    setIsPlaying(true);
+                    setShowPlayOverlay(false);
+                }).catch(() => {
+                    setShowPlayOverlay(true);
+                });
+            }
         };
 
         const handleTimeUpdate = () => {
