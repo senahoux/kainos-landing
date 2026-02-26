@@ -43,7 +43,13 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
     };
 
     const handleVideoTap = () => {
-        handlePlayPause();
+        if (!showControls) {
+            // First tap: just reveal the controls, don't toggle play/pause
+            resetControlsTimer();
+        } else {
+            // Controls already visible: toggle play/pause and reset timer
+            handlePlayPause();
+        }
     };
 
     const toggleSpeed = () => {
