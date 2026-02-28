@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Check, ArrowRight, Star, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-const PRICE_ID_MONTHLY = import.meta.env.VITE_STRIPE_PRICE_ID_MONTHLY || 'price_1T31owLdVnAwm3JUlovYdaik';
+const PRICE_ID_MONTHLY = import.meta.env.VITE_STRIPE_PRICE_ID_MONTHLY || 'price_1T5nYVLdVnAwm3JU6u1MQPOq';
 const PRICE_ID_YEARLY = import.meta.env.VITE_STRIPE_PRICE_ID_YEARLY || 'price_1T31pcLdVnAwm3JUOBahIxyv';
 
 const monthlyFeatures = [

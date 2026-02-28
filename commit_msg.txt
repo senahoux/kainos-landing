@@ -1,9 +1,7 @@
-feat: remove video gating and update monthly price
+fix: update monthly Stripe Price ID to price_1T5nYVLdVnAwm3JU6u1MQPOq
 
-- Removed isUnlocked state, checkAlreadyUnlocked, handleUnlock from App.tsx
-- Removed UNLOCK_TIME, onUnlock prop and calls from TopVideoSection
-- Removed conditional hidden sections - all content visible immediately
-- Removed CTA button after video
-- Removed status text about video unlock
-- Updated monthly plan price from R$35 to R$41.50
-- Meta Pixel events preserved: PageView, ViewPlans, InitiateCheckout, Purchase
+Updated in:
+- src/components/PricingSection.tsx (frontend allowlist)
+- api/checkout.js (server-side allowlist + validation)
+
+Annual plan, webhook, metadata, checkout logic unchanged.

@@ -11,7 +11,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // ─── Server-side allowlist of LIVE price IDs ──────────────────────────────────
 // Never trust the frontend — validate against this set before charging the user.
-const PRICE_ID_MONTHLY = process.env.STRIPE_PRICE_ID_MONTHLY || "price_1T31owLdVnAwm3JUlovYdaik";
+const PRICE_ID_MONTHLY = process.env.STRIPE_PRICE_ID_MONTHLY || "price_1T5nYVLdVnAwm3JU6u1MQPOq";
 const PRICE_ID_YEARLY = process.env.STRIPE_PRICE_ID_YEARLY || "price_1T31pcLdVnAwm3JUOBahIxyv";
 const ALLOWED_PRICE_IDS = new Set([PRICE_ID_MONTHLY, PRICE_ID_YEARLY]);
 
