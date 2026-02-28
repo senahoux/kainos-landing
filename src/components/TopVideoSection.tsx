@@ -2,13 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, FastForward, CheckCircle2 } from 'lucide-react';
 import Hls from 'hls.js';
 
-interface TopVideoSectionProps {
-    onUnlock: () => void;
-}
-
-const UNLOCK_TIME = 690; // 11:30 in seconds
-
-const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
+const TopVideoSection: React.FC = () => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -69,16 +63,13 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
         let hls: Hls | null = null;
 
         const onReady = () => {
-            // Restore time from localStorage
+            // Restore playback position from localStorage (progress only, no gating)
             const savedTime = localStorage.getItem('vsl_current_time');
             if (savedTime) {
                 const time = parseFloat(savedTime);
                 if (!isNaN(time)) {
                     video.currentTime = time;
                     setCurrentTime(time);
-                    if (time >= UNLOCK_TIME) {
-                        onUnlock();
-                    }
                 }
             }
 
@@ -97,9 +88,6 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
             const time = video.currentTime;
             setCurrentTime(time);
             localStorage.setItem('vsl_current_time', time.toString());
-            if (time >= UNLOCK_TIME) {
-                onUnlock();
-            }
         };
 
         const handleLoadedMetadata = () => {
@@ -107,7 +95,6 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
         };
 
         const handleEnded = () => {
-            onUnlock();
             setIsPlaying(false);
             localStorage.removeItem('vsl_current_time');
         };
@@ -146,7 +133,7 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
                 hls.destroy();
             }
         };
-    }, [onUnlock]);
+    }, []);
 
     // Progress mapping: fast at start, slow at end
     // p = 1 - (1 - t)^1.5 (moderate) or squared
@@ -251,10 +238,7 @@ const TopVideoSection: React.FC<TopVideoSectionProps> = ({ onUnlock }) => {
                 </div>
 
 
-                {/* Status Message */}
-                <div className="text-zinc-500 text-sm font-medium animate-pulse">
-                    Ao terminar o vídeo, será liberado o restante da página.
-                </div>
+
             </div>
         </section>
     );

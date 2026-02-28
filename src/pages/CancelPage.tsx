@@ -1,6 +1,5 @@
 import React from 'react';
 import { XCircle, ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 const CancelPage: React.FC = () => {
     return (
@@ -21,13 +20,17 @@ const CancelPage: React.FC = () => {
                 </div>
 
                 {/* CTA */}
-                <Link
-                    to="/"
+                <a
+                    href="https://www.kainosapp.com.br"
+                    onClick={() => {
+                        // Mark as unlocked so the landing page skips the video gate
+                        localStorage.setItem('vsl_unlocked', '1');
+                    }}
                     className="inline-flex items-center gap-2 px-6 py-4 rounded-full border border-zinc-700 text-zinc-300 font-semibold hover:border-orange-500/50 hover:text-orange-400 transition-all duration-300"
                 >
                     <ArrowLeft size={18} />
                     Voltar para a landing
-                </Link>
+                </a>
             </div>
         </div>
     );

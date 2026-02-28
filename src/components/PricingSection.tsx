@@ -21,7 +21,7 @@ const annualFeatures = [
 ];
 
 const PLAN_VALUES: Record<string, number> = {
-    [PRICE_ID_MONTHLY]: 35,
+    [PRICE_ID_MONTHLY]: 41.5,
     [PRICE_ID_YEARLY]: 288,
 };
 
@@ -109,7 +109,8 @@ const PricingSection: React.FC = () => {
                         </div>
                         <div className="flex items-end gap-1">
                             <span className="text-zinc-500 text-base font-medium">R$</span>
-                            <span className="text-white font-black text-5xl leading-none">35</span>
+                            <span className="text-white font-black text-5xl leading-none">41</span>
+                            <span className="text-white font-black text-2xl leading-none mb-1">,50</span>
                             <span className="text-zinc-500 text-base mb-1">/mês</span>
                         </div>
                         <ul className="flex flex-col gap-3">

@@ -1,4 +1,3 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
 import './index.css'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
@@ -14,72 +13,22 @@ import Footer from './components/Footer'
 import SuccessPage from './pages/SuccessPage'
 import CancelPage from './pages/CancelPage'
 import TopVideoSection from './components/TopVideoSection'
-import { ArrowRight } from 'lucide-react'
 
+// Landing page – all sections visible immediately, no video gating
 function LandingLayout() {
-  const [isUnlocked, setIsUnlocked] = useState(false);
-  const lockedContentRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // When locked, we just let the page height be defined by the TopVideoSection.
-    // We don't need to force overflow: hidden because the rest of the content is already h-0.
-    // This allows the user to scroll to see the full video if it's taller than the viewport.
-    if (isUnlocked) {
-      // No-op or any logic needed when unlocking
-    }
-  }, [isUnlocked]);
-
-  const handleUnlock = useCallback(() => {
-    setIsUnlocked(prev => {
-      if (prev) return prev; // already unlocked, no-op
-      setTimeout(() => {
-        document.getElementById('ctaAfterVideo')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
-      return true;
-    });
-  }, []); // stable reference — never recreated
-
-  const handleCTAClick = () => {
-    // Scroll to the first section (Hero) or pricing if preferred
-    lockedContentRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   return (
     <div className="min-h-screen bg-black">
       <Navbar />
       <main>
-        <TopVideoSection onUnlock={handleUnlock} />
-
-        {isUnlocked && (
-          <div
-            id="ctaAfterVideo"
-            className="flex flex-col items-center py-12 px-6 animate-fade-in"
-          >
-            <button
-              onClick={handleCTAClick}
-              className="group inline-flex items-center gap-3 px-10 py-6 rounded-full bg-orange-500 text-white font-black text-lg sm:text-xl tracking-wide hover:bg-orange-400 transition-all duration-300 glow-orange hover:scale-105 shadow-[0_0_50px_-10px_rgba(249,115,22,0.6)] cursor-pointer"
-            >
-              INICIAR TRANSFORMAÇÃO
-              <ArrowRight size={24} className="group-hover:translate-x-2 transition-transform duration-300" />
-            </button>
-          </div>
-        )}
-
-        <div
-          id="lockedContent"
-          className={`${isUnlocked ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden pointer-events-none'} transition-all-slow duration-1000`}
-        >
-          <div ref={lockedContentRef}>
-            <HeroSection />
-          </div>
-          <DiagnosisSection />
-          <BridgeSection />
-          <SolutionSection />
-          <PriceOfAddictionSection />
-          <PricingSection />
-          <FounderSection />
-          <FAQSection />
-        </div>
+        <TopVideoSection />
+        <HeroSection />
+        <DiagnosisSection />
+        <BridgeSection />
+        <SolutionSection />
+        <PriceOfAddictionSection />
+        <PricingSection />
+        <FounderSection />
+        <FAQSection />
       </main>
       <Footer />
     </div>
@@ -99,4 +48,3 @@ function App() {
 }
 
 export default App
-
