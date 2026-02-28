@@ -17,7 +17,7 @@ const annualFeatures = [
     ...monthlyFeatures,
     'Suporte prioritário',
     'Conteúdo exclusivo mensal',
-    'Economia de R$ 132/ano',
+    'Economia de R$ 210/ano',
 ];
 
 const PLAN_VALUES: Record<string, number> = {
@@ -150,13 +150,21 @@ const PricingSection: React.FC = () => {
                             <p className="text-zinc-500 text-sm">O compromisso que gera transformação real.</p>
                         </div>
 
-                        <div>
+                        <div className="flex flex-col gap-1">
+                            {/* Valor anual em destaque */}
                             <div className="flex items-end gap-1">
-                                <span className="text-orange-400 text-base font-medium">R$</span>
-                                <span className="text-white font-black text-5xl leading-none">24</span>
-                                <span className="text-zinc-400 text-base mb-1">/mês</span>
+                                <span className="text-zinc-400 text-base font-medium">R$</span>
+                                <span className="text-white font-black text-5xl leading-none">288</span>
+                                <span className="text-zinc-400 text-base mb-1">/ano</span>
                             </div>
-                            <p className="text-zinc-500 text-sm mt-1">Cobrado R$ 288/ano · Economize R$ 132</p>
+                            {/* Equivalente mensal */}
+                            <div className="flex items-end gap-1 mt-1">
+                                <span className="text-zinc-400 text-sm font-medium">Equivalente a</span>
+                                <span className="text-white font-bold text-2xl leading-none">R$ 24</span>
+                                <span className="text-zinc-400 text-sm mb-0.5">por mês</span>
+                            </div>
+                            {/* Gatilho de economia */}
+                            <p className="text-emerald-400 text-sm font-semibold mt-1">Economize R$ 210 por ano</p>
                         </div>
 
                         <ul className="flex flex-col gap-3">

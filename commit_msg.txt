@@ -1,7 +1,6 @@
-fix: update monthly Stripe Price ID to price_1T5nYVLdVnAwm3JU6u1MQPOq
+style: redesign annual plan price display
 
-Updated in:
-- src/components/PricingSection.tsx (frontend allowlist)
-- api/checkout.js (server-side allowlist + validation)
-
-Annual plan, webhook, metadata, checkout logic unchanged.
+- Show R$ 288/ano as primary price (large, white, bold)
+- Show "Equivalente a R$ 24 por mes" below (medium, white)
+- Show "Economize R$ 210 por ano" in emerald green as gain trigger
+- Update features list: "Economia de R$ 132/ano" -> "Economia de R$ 210/ano"
