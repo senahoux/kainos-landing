@@ -3,7 +3,8 @@ import { Check, ArrowRight, Star, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const PRICE_ID_MONTHLY = import.meta.env.VITE_STRIPE_PRICE_ID_MONTHLY || 'price_1T5nYVLdVnAwm3JU6u1MQPOq';
-const PRICE_ID_YEARLY = import.meta.env.VITE_STRIPE_PRICE_ID_YEARLY || 'price_1T31pcLdVnAwm3JUOBahIxyv';
+const PRICE_ID_SEMIANNUAL = import.meta.env.VITE_STRIPE_PRICE_ID_SEMIANNUAL || 'price_1T6ZIeLdVnAwm3JUZ2OCiuCo';
+const PRICE_ID_YEARLY = import.meta.env.VITE_STRIPE_PRICE_ID_YEARLY || 'price_1T6ZEuLdVnAwm3JUt0FQu0iF';
 
 const monthlyFeatures = [
     'Acesso completo ao app',
@@ -13,16 +14,22 @@ const monthlyFeatures = [
     'Menu Evolução',
 ];
 
+const semiannualFeatures = [
+    ...monthlyFeatures,
+    'Suporte prioritário',
+];
+
 const annualFeatures = [
     ...monthlyFeatures,
     'Suporte prioritário',
     'Conteúdo exclusivo mensal',
-    'Economia de R$ 210/ano',
+    'Economize R$ 271 por ano',
 ];
 
 const PLAN_VALUES: Record<string, number> = {
     [PRICE_ID_MONTHLY]: 41.5,
-    [PRICE_ID_YEARLY]: 288,
+    [PRICE_ID_SEMIANNUAL]: 167,
+    [PRICE_ID_YEARLY]: 227,
 };
 
 async function startCheckout(priceId: string, setLoading: (v: string | null) => void) {
@@ -88,7 +95,7 @@ const PricingSection: React.FC = () => {
             {/* Top gradient divider */}
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-orange-500/30 to-transparent" />
 
-            <div className="max-w-4xl mx-auto flex flex-col gap-12">
+            <div className="max-w-6xl mx-auto flex flex-col gap-12">
 
                 {/* Header */}
                 <div className="text-center flex flex-col gap-4">
@@ -99,13 +106,13 @@ const PricingSection: React.FC = () => {
                 </div>
 
                 {/* Pricing cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
 
                     {/* Monthly */}
                     <div className="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-8 flex flex-col gap-6">
                         <div>
                             <h3 className="text-white font-bold text-xl mb-1">Mensal</h3>
-                            <p className="text-zinc-500 text-sm">Flexibilidade total, sem compromisso.</p>
+                            <p className="text-zinc-500 text-sm">Cobrança recorrente mensal.</p>
                         </div>
                         <div className="flex items-end gap-1">
                             <span className="text-zinc-500 text-base font-medium">R$</span>
@@ -113,7 +120,7 @@ const PricingSection: React.FC = () => {
                             <span className="text-white font-black text-2xl leading-none mb-1">,50</span>
                             <span className="text-zinc-500 text-base mb-1">/mês</span>
                         </div>
-                        <ul className="flex flex-col gap-3">
+                        <ul className="flex-grow flex flex-col gap-3">
                             {monthlyFeatures.map((f) => (
                                 <li key={f} className="flex items-center gap-3">
                                     <div className="w-5 h-5 rounded-full bg-zinc-700/50 flex items-center justify-center flex-shrink-0">
@@ -134,15 +141,47 @@ const PricingSection: React.FC = () => {
                         </button>
                     </div>
 
+                    {/* Semiannual */}
+                    <div className="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-8 flex flex-col gap-6">
+                        <div>
+                            <h3 className="text-white font-bold text-xl mb-1">Semestral</h3>
+                            <p className="text-zinc-500 text-sm">Cobrança recorrente a cada 6 meses.</p>
+                        </div>
+                        <div className="flex items-end gap-1">
+                            <span className="text-zinc-500 text-base font-medium">R$</span>
+                            <span className="text-white font-black text-5xl leading-none">167</span>
+                        </div>
+                        <p className="text-zinc-500 text-sm -mt-4">a cada 6 meses</p>
+                        <ul className="flex-grow flex flex-col gap-3">
+                            {semiannualFeatures.map((f) => (
+                                <li key={f} className="flex items-center gap-3">
+                                    <div className="w-5 h-5 rounded-full bg-zinc-700/50 flex items-center justify-center flex-shrink-0">
+                                        <Check size={10} className="text-zinc-400" />
+                                    </div>
+                                    <span className="text-zinc-400 text-sm">{f}</span>
+                                </li>
+                            ))}
+                        </ul>
+                        <button
+                            onClick={() => startCheckout(PRICE_ID_SEMIANNUAL, setLoading)}
+                            disabled={loading !== null}
+                            className="w-full py-4 rounded-xl bg-zinc-700 hover:bg-zinc-600 text-white font-bold text-center transition-colors duration-300 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            {loading === PRICE_ID_SEMIANNUAL ? (
+                                <><Loader2 size={16} className="animate-spin" /> Aguarde...</>
+                            ) : 'Assinar Semestralmente'}
+                        </button>
+                    </div>
+
                     {/* Annual (highlighted) */}
                     <div
                         className="relative border border-orange-500/50 rounded-2xl p-8 flex flex-col gap-6"
                         style={{ background: 'radial-gradient(ellipse 100% 80% at 50% 0%, rgba(249,115,22,0.06) 0%, transparent 70%), rgba(24,24,27,0.8)', boxShadow: '0 0 60px -20px rgba(249,115,22,0.2)' }}
                     >
                         {/* Badge */}
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 px-4 py-1 rounded-full bg-orange-500 text-white text-xs font-black tracking-wider">
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 px-4 py-1 rounded-full bg-orange-500 text-white text-xs font-black tracking-wider shadow-lg shadow-orange-500/20 whitespace-nowrap">
                             <Star size={10} fill="white" />
-                            MAIS ECONÔMICO
+                            MAIS VANTAJOSO
                         </div>
 
                         <div>
@@ -154,20 +193,20 @@ const PricingSection: React.FC = () => {
                             {/* Valor anual em destaque */}
                             <div className="flex items-end gap-1">
                                 <span className="text-zinc-400 text-base font-medium">R$</span>
-                                <span className="text-white font-black text-5xl leading-none">288</span>
-                                <span className="text-zinc-400 text-base mb-1">/ano</span>
+                                <span className="text-white font-black text-5xl leading-none">227</span>
+                                <span className="text-zinc-400 text-base mb-1">por ano</span>
                             </div>
                             {/* Equivalente mensal */}
                             <div className="flex items-end gap-1 mt-1">
                                 <span className="text-zinc-400 text-sm font-medium">Equivalente a</span>
-                                <span className="text-white font-bold text-2xl leading-none">R$ 24</span>
+                                <span className="text-white font-bold text-2xl leading-none">R$ 18,90</span>
                                 <span className="text-zinc-400 text-sm mb-0.5">por mês</span>
                             </div>
                             {/* Gatilho de economia */}
-                            <p className="text-emerald-400 text-sm font-semibold mt-1">Economize R$ 210 por ano</p>
+                            <p className="text-emerald-400 text-sm font-semibold mt-1">Economize R$ 271 por ano</p>
                         </div>
 
-                        <ul className="flex flex-col gap-3">
+                        <ul className="flex-grow flex flex-col gap-3">
                             {annualFeatures.map((f) => (
                                 <li key={f} className="flex items-center gap-3">
                                     <div className="w-5 h-5 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center flex-shrink-0">

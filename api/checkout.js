@@ -12,8 +12,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // ─── Server-side allowlist of LIVE price IDs ──────────────────────────────────
 // Never trust the frontend — validate against this set before charging the user.
 const PRICE_ID_MONTHLY = process.env.STRIPE_PRICE_ID_MONTHLY || "price_1T5nYVLdVnAwm3JU6u1MQPOq";
-const PRICE_ID_YEARLY = process.env.STRIPE_PRICE_ID_YEARLY || "price_1T31pcLdVnAwm3JUOBahIxyv";
-const ALLOWED_PRICE_IDS = new Set([PRICE_ID_MONTHLY, PRICE_ID_YEARLY]);
+const PRICE_ID_SEMIANNUAL = process.env.STRIPE_PRICE_ID_SEMIANNUAL || "price_1T6ZIeLdVnAwm3JUZ2OCiuCo";
+const PRICE_ID_YEARLY = process.env.STRIPE_PRICE_ID_YEARLY || "price_1T6ZEuLdVnAwm3JUt0FQu0iF";
+const ALLOWED_PRICE_IDS = new Set([PRICE_ID_MONTHLY, PRICE_ID_SEMIANNUAL, PRICE_ID_YEARLY]);
 
 export default async function handler(req, res) {
     // CORS headers — restrict to your own domain in production if desired
