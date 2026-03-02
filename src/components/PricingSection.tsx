@@ -255,9 +255,6 @@ const PricingSection: React.FC = () => {
                     </div>
                 </div>
 
-                <p className="text-center text-zinc-600 text-sm">
-                    Garantia de 7 dias · Cancele quando quiser · Sem burocracia
-                </p>
             </div>
         </section>
     );
