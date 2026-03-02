@@ -6,24 +6,15 @@ const PRICE_ID_MONTHLY = import.meta.env.VITE_STRIPE_PRICE_ID_MONTHLY || 'price_
 const PRICE_ID_SEMIANNUAL = import.meta.env.VITE_STRIPE_PRICE_ID_SEMIANNUAL || 'price_1T6ZIeLdVnAwm3JUZ2OCiuCo';
 const PRICE_ID_YEARLY = import.meta.env.VITE_STRIPE_PRICE_ID_YEARLY || 'price_1T6ZEuLdVnAwm3JUt0FQu0iF';
 
-const monthlyFeatures = [
+const baseFeatures = [
     'Acesso completo ao app',
     'IA Terapêutica (ACT)',
-    'Comunidade de Guarda',
+    'Comunidade de apoio',
     'Diário e check-in diário',
-    'Menu Evolução',
-];
-
-const semiannualFeatures = [
-    ...monthlyFeatures,
+    'Gráficos de Evolução',
     'Suporte prioritário',
-];
-
-const annualFeatures = [
-    ...monthlyFeatures,
-    'Suporte prioritário',
-    'Conteúdo exclusivo mensal',
-    'Economize R$ 271 por ano',
+    'Conteúdo exclusivo semanal',
+    'Orientação personalizada ao hábito que você deseja vencer.',
 ];
 
 const PLAN_VALUES: Record<string, number> = {
@@ -121,7 +112,13 @@ const PricingSection: React.FC = () => {
                             <span className="text-zinc-500 text-base mb-1">/mês</span>
                         </div>
                         <ul className="flex-grow flex flex-col gap-3">
-                            {monthlyFeatures.map((f) => (
+                            <li className="flex items-center gap-3 p-2 rounded-lg bg-white/5 border border-white/10 mb-2">
+                                <Star size={14} className="text-orange-400 fill-orange-400 flex-shrink-0" />
+                                <span className="text-white text-xs font-bold leading-tight">
+                                    Garantia de 7 dias · Cancele quando quiser · Sem burocracia
+                                </span>
+                            </li>
+                            {baseFeatures.map((f) => (
                                 <li key={f} className="flex items-center gap-3">
                                     <div className="w-5 h-5 rounded-full bg-zinc-700/50 flex items-center justify-center flex-shrink-0">
                                         <Check size={10} className="text-zinc-400" />
@@ -147,13 +144,26 @@ const PricingSection: React.FC = () => {
                             <h3 className="text-white font-bold text-xl mb-1">Semestral</h3>
                             <p className="text-zinc-500 text-sm">Cobrança recorrente a cada 6 meses.</p>
                         </div>
-                        <div className="flex items-end gap-1">
-                            <span className="text-zinc-500 text-base font-medium">R$</span>
-                            <span className="text-white font-black text-5xl leading-none">167</span>
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-end gap-1">
+                                <span className="text-zinc-500 text-base font-medium">R$</span>
+                                <span className="text-white font-black text-5xl leading-none">167</span>
+                            </div>
+                            <p className="text-zinc-500 text-sm">a cada 6 meses</p>
+                            <div className="flex items-end gap-1 mt-1">
+                                <span className="text-zinc-400 text-xs font-medium uppercase tracking-wider">Equivalente a</span>
+                                <span className="text-white font-bold text-xl leading-none">R$ 27,80</span>
+                                <span className="text-zinc-400 text-xs mb-0.5">/mês</span>
+                            </div>
                         </div>
-                        <p className="text-zinc-500 text-sm -mt-4">a cada 6 meses</p>
                         <ul className="flex-grow flex flex-col gap-3">
-                            {semiannualFeatures.map((f) => (
+                            <li className="flex items-center gap-3 p-2 rounded-lg bg-white/5 border border-white/10 mb-2">
+                                <Star size={14} className="text-orange-400 fill-orange-400 flex-shrink-0" />
+                                <span className="text-white text-xs font-bold leading-tight">
+                                    Garantia de 7 dias · Cancele quando quiser · Sem burocracia
+                                </span>
+                            </li>
+                            {baseFeatures.map((f) => (
                                 <li key={f} className="flex items-center gap-3">
                                     <div className="w-5 h-5 rounded-full bg-zinc-700/50 flex items-center justify-center flex-shrink-0">
                                         <Check size={10} className="text-zinc-400" />
@@ -202,12 +212,22 @@ const PricingSection: React.FC = () => {
                                 <span className="text-white font-bold text-2xl leading-none">R$ 18,90</span>
                                 <span className="text-zinc-400 text-sm mb-0.5">por mês</span>
                             </div>
-                            {/* Gatilho de economia */}
-                            <p className="text-emerald-400 text-sm font-semibold mt-1">Economize R$ 271 por ano</p>
                         </div>
 
                         <ul className="flex-grow flex flex-col gap-3">
-                            {annualFeatures.map((f) => (
+                            <li className="flex items-center gap-3 p-2 rounded-lg bg-orange-500/10 border border-orange-500/20 mb-2">
+                                <Star size={14} className="text-orange-500 fill-orange-500 flex-shrink-0" />
+                                <span className="text-white text-xs font-bold leading-tight">
+                                    Garantia de 7 dias · Cancele quando quiser · Sem burocracia
+                                </span>
+                            </li>
+                            <li className="flex items-center gap-3 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 mb-2">
+                                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                                    <Check size={10} className="text-emerald-400" />
+                                </div>
+                                <span className="text-emerald-400 text-sm font-bold">Economize R$ 271 por ano</span>
+                            </li>
+                            {baseFeatures.map((f) => (
                                 <li key={f} className="flex items-center gap-3">
                                     <div className="w-5 h-5 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center flex-shrink-0">
                                         <Check size={10} className="text-orange-400" />
