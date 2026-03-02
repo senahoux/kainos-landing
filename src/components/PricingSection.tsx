@@ -148,8 +148,8 @@ const PricingSection: React.FC = () => {
                             <div className="flex items-end gap-1">
                                 <span className="text-zinc-500 text-base font-medium">R$</span>
                                 <span className="text-white font-black text-5xl leading-none">167</span>
+                                <span className="text-zinc-500 text-base mb-1">a cada 6 meses</span>
                             </div>
-                            <p className="text-zinc-500 text-sm">a cada 6 meses</p>
                             <div className="flex items-end gap-1 mt-1">
                                 <span className="text-zinc-400 text-sm font-medium">Equivalente a</span>
                                 <span className="text-white font-bold text-xl leading-none">R$ 27,80</span>
