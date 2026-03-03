@@ -149,7 +149,7 @@ const TopVideoSection: React.FC = () => {
                         ABANDONAR O VÍCIO É POSSÍVEL, <span className="text-orange-500">MESMO QUE VOCÊ TENHA TENTADO INÚMERAS VEZES.</span>
                     </h1>
                     <p className="text-zinc-400 text-lg sm:text-xl leading-relaxed">
-                        Você não precisa, necessariamente, começar com uma internação ou se afundar em medicamentos para dar o primeiro passo rumo à libertação, existe uma estratégia estruturada que pode te ajudar a retomar o controle de forma eficaz para conseguir vencer esse hábito destrutivo.
+                        Com a estrutura certa, você pode substituir hábitos nocivos por hábitos intencionais, rompendo ciclos como pornografia silenciosa, álcool, compulsões ou qualquer comportamento destrutivo que você nunca conseguiu abandonar.
                     </p>
                 </div>
 
