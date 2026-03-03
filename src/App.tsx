@@ -8,6 +8,7 @@ import SolutionSection from './components/SolutionSection'
 import FounderSection from './components/FounderSection'
 import PriceOfAddictionSection from './components/PriceOfAddictionSection'
 import PricingSection from './components/PricingSection'
+import SocialProofSection from './components/SocialProofSection'
 import FAQSection from './components/FAQSection'
 import Footer from './components/Footer'
 import SuccessPage from './pages/SuccessPage'
@@ -27,6 +28,7 @@ function LandingLayout() {
         <SolutionSection />
         <PriceOfAddictionSection />
         <PricingSection />
+        <SocialProofSection />
         <FounderSection />
         <FAQSection />
       </main>
